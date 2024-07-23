@@ -1,17 +1,27 @@
 package com;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.AssetFileDescriptor;
 
+import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.ActionProvider;
+import android.view.ContextMenu;
+import android.view.MenuInflater;
+import android.view.SubMenu;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.TextView;
 import com.humaxdigital.avtovaz.mediaplayer.R;
 
@@ -21,8 +31,10 @@ import java.util.Timer;
 
 public class MainActivity extends AppCompatActivity
     implements MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener, SurfaceHolder.Callback {
+    private static MainActivity mInstance;
+    public static MediaPlayer mMediaPlayer;
 
-    private MediaPlayer mMediaPlayer;
+    private Menu mMenu;
     private final Runnable mRunnablePlaybackTimeUpdateTask = new Runnable() {
         public void run() {
             if (mMediaPlayer.isPlaying()) {
@@ -52,11 +64,13 @@ public class MainActivity extends AppCompatActivity
     private SurfaceView mVideoSurfaceView;
     private SurfaceHolder surfaceHolder;
 
+    private BroadCastReceiver listener = null;
+    private IntentFilter intentFilter = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        mInstance = this;
         mMediaPlayer = new MediaPlayer();
         mMediaPlayer.setOnCompletionListener(this);
         mMediaPlayer.setOnPreparedListener(this);
@@ -66,11 +80,16 @@ public class MainActivity extends AppCompatActivity
         surfaceHolder = mVideoSurfaceView.getHolder();
         // MediaPlayer.setDisplay() will be called in :surfaceCreated() callback
         surfaceHolder.addCallback(this);
+
+        this.listener = new BroadCastReceiver();
+        this.intentFilter = new IntentFilter("ADB_PLAY_MUSIC");
+        registerReceiver(listener, intentFilter);
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
+    public boolean onCreateOptionsMenu(final Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
+        mMenu = menu;
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
@@ -168,5 +187,21 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
 
+    }
+
+    public static MainActivity getInstance() {
+        return mInstance;
+    }
+    public void onHandleBroadcast() {
+        AssetFileDescriptor afd;
+        afd = getBaseContext().getResources().openRawResourceFd(R.raw.nhung_loi_hua_bo_quen);
+        try {
+            mMediaPlayer.reset();
+            mMediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getDeclaredLength());
+            mMediaPlayer.prepare();
+            mMediaPlayer.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
